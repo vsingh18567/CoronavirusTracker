@@ -1,0 +1,4 @@
+﻿Recipients,geo_type 1,us_state 1,geo_name 1,geo_type 2,us_state 2,geo_name 2,geo_type 3,us_state 3,geo_name 3,geo_type 4,us_state 4,geo_name 4,geo_type 5,us_state 5,geo_name 5,geo_type 6,us_state 6,geo_name 6,geo_type 7,us_state 7,geo_name 7,geo_type 8,us_state 8,geo_name 8
+email1@gmail.com,Country,NaN,USA,Country,NaN,World,State,NaN,Pennsylvania,County,Pennsylvania,Philadelphia,,,,,,,,,,,,
+email2@gmail.com,Country,NaN,Hong Kong,State,NaN,Florida,,,,,,,,,,,,,,,,,,
+email3@gmail.com,Country,NaN,India,Country,NaN,World,County,California,Los Angeles,,,,,,,,,,,,,,,

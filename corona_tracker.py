@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
 import time
-
+from csv import reader
 
 def get_data(geo_type='Country', us_state='', geo_name='World'):
 	'''
@@ -66,6 +66,7 @@ def get_data(geo_type='Country', us_state='', geo_name='World'):
 
 def format_email(locations=[]):
 	'''
+	Turns a list of locations into an HTML-formatted email
 	locations (list): a list of dictionaries that outline the data needed for the get_data function
 	'''
 	assert len(locations) > 0
@@ -104,24 +105,25 @@ def format_email(locations=[]):
 	return html_opening
 
 
-def send_mail(html_text, subject='Daily Coronavirus Update', from_email={}, to_emails=[]):
+def send_mail(html_text, subject='Daily Coronavirus Update', from_email={}, to_email=[]):
 	'''
+	Sends an email
 	param text: (str) body of the email\n
 	param subject: (str) subject of email\n
 	param from_email: (dict) a dictionary of the 'username' & 'password' of the sender\n
-	param to_emails: (list (str)) a list of email addresses to which the email will be sent\n
+	param to_email: (list (str)) a list with the email address to which the email will be sent\n
 	returns None
 	'''
-	assert isinstance(to_emails, list)  # if this statement is false, an error will be initiatied
+	assert isinstance(to_email, list)  # if this statement is false, an error will be initiatied
 	assert isinstance(from_email, dict)
 	assert len(from_email) == 2
-	assert len(to_emails) > 0
+	assert len(to_email) == 1
 
 	username = from_email['username']
 	password = from_email['password']
 	msg = MIMEMultipart('alternative')
 	msg['From'] = username
-	msg['To'] = ", ".join(to_emails)  # turns list into comma seperated values
+	msg['To'] = ", ".join(to_email)  # turns list into comma seperated values
 	msg['Subject'] = subject
 
 	html_part = MIMEText(html_text, 'html')
@@ -135,14 +137,55 @@ def send_mail(html_text, subject='Daily Coronavirus Update', from_email={}, to_e
 	# create secure connection
 	server.starttls()
 	server.login(username, password)
-	server.sendmail(username, to_emails, msg_str)
+	server.sendmail(username, to_email, msg_str)
 
 	# quit server
 	server.quit()
 
 
-def main(hour=8, minute=25):
+def daily_blast(csv_file, from_email={}):
 	'''
+	csv_file (str): name of csv file with recipient data
+	from_email (dict): a dictionary of the 'username' & 'password' of the sender
+	'''
+
+	# Turns csv_file into list of lists
+	with open(csv_file, 'r') as read_obj:
+		csv_reader = reader(read_obj)
+		list_of_rows = list(csv_reader)
+		data = list_of_rows[1:]
+		print(data)
+
+	# Each row is an email recipient
+	for row in data:
+		# checks the number of locations that this recipient needs to be updated about
+		items = 0
+		to_email = row[0]
+		for item in row:
+			if item != '':
+				items += 1
+		no_of_locations = int((items - 1) / 3)
+
+		# creates the list of locations needed for the format_email function
+		locations = []
+		for i in range(no_of_locations):
+			geo_type = row[i * 3 + 1]
+			state = row[i * 3 + 2]
+			geo_name = row[i * 3 + 3]
+			locations.append({
+				'geo_type': geo_type,
+				'us_state': state,
+				'geo_name': geo_name
+			})
+
+		html_text = format_email(locations=locations)
+		# sends email to specific recipient
+		send_mail(html_text=html_text,from_email=from_email, to_email=[to_email])
+
+
+def main(hour=8, minute=25, from_email={}, csv_file='sample.csv'):
+	'''
+	Checks the time in a continuous loop, waiting to carry out the daily blast
 	hour (int): the hour of the day when you want the email to be sent
 	minute (int): the minute of the day when you want the email to be sent
 	'''
@@ -157,29 +200,26 @@ def main(hour=8, minute=25):
 	dt = datetime.datetime(year, month, day, hour, minute)
 	dt2 = datetime.datetime(year, month, day, hour, minute + 1)
 
-	# Turns a list of locations into html_text
-	html_text = format_email([
-		{'geo_type': 'Country', 'us_state': '', 'geo_name': 'World'},
-		{'geo_type': 'Country', 'us_state': '', 'geo_name': 'USA'},
-		{'geo_type': 'Country', 'us_state': '', 'geo_name': 'Hong Kong'},
-		{'geo_type': 'State', 'us_state': '', 'geo_name': 'Pennsylvania'},
-		{'geo_type': 'County', 'us_state': 'Pennsylvania', 'geo_name': 'Philadelphia'}
-	])
-	from_email = {
-		'username': 'email@gmail.com',
-		'password': 'password'
-	}
-	to_emails = ['email1@gmail.com', 'email2@gmail.com']
 
 	while True:
+		# if the current time is the allotted time
 		if dt < datetime.datetime.now() < dt2:
-			send_mail(html_text=html_text, from_email=from_email, to_emails=to_emails)
+			daily_blast(csv_file=csv_file, from_email=from_email)
+
+			# resets to search for the same time the next day
 			day += 1
 			dt = datetime.datetime(year, month, day, hour, minute)
 			dt2 = datetime.datetime(year, month, day, hour, minute + 1)
-			time.sleep(80000)  # sleeps for almost a day
+
+			# sleeps for almost a day
+			time.sleep(80000)
 		time.sleep(30)
 
 
 if __name__ == '__main__':
-	main()
+	from_email = {
+		'username': 'username@gmail.com',
+		'password': 'password'
+	}
+
+	main(hour=8, minute=25, from_email=from_email, csv_file='sample.csv')
